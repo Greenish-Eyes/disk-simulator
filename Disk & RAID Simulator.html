@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Disk &amp; RAID Simulator</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#5d6b7c;--ac:#2563eb;--bd:#d9dee5;--ok:#15803d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141b;--card:#181f29;--tx:#e6ebf2;--mu:#93a1b3;--ac:#6ea0ff;--bd:#2c3644;--ok:#4ade80}}
+:root[data-theme="dark"]{--bg:#0f141b;--card:#181f29;--tx:#e6ebf2;--mu:#93a1b3;--ac:#6ea0ff;--bd:#2c3644;--ok:#4ade80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:auto;padding:14px}h1{font-size:20px;margin:6px 0}h3{margin:14px 0 6px;font-size:15px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}nav button,.btn{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
+nav button.on,.btn.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap}label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:2px}
+input,select{background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:6px;font:inherit;min-width:90px}
+.mu{color:var(--mu);font-size:13px}.res{font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre-wrap;background:var(--bg);border-radius:8px;padding:10px;margin-top:8px}
+.big{font-size:22px;font-weight:700;color:var(--ok)}.tw{overflow-x:auto}table{border-collapse:collapse;font-size:13px;width:100%}td,th{border:1px solid var(--bd);padding:5px 8px;text-align:center}tr.sel td{background:color-mix(in srgb,var(--ac) 18%,transparent)}
+#cv{height:380px;border-radius:10px;overflow:hidden;background:#0b1118;cursor:grab;touch-action:none}.sec{display:none}.sec.on{display:block}
+.g{display:inline-grid;gap:3px}.g div{border:1px solid var(--bd);border-radius:5px;padding:3px 7px;text-align:center;font-size:12px;min-width:34px}.g .p{background:var(--ac);color:#fff}.g .h{outline:2px solid var(--ok)}
+</style></head><body><main>
+<h1>Disk &amp; RAID Simulator</h1><div class="mu">Based on the OSTEP chapters: Hard Disk Drives, RAID, FFS, LFS, SSD, Data Integrity.</div>
+<nav id="nav"></nav>
+
+<section class="sec on" id="s0"><div class="card"><div id="cv"></div>
+<div class="row" style="margin-top:8px"><button class="btn" id="bSeek">Toggle seek animation</button><button class="btn" id="bSpin">Pause spin</button><span class="mu">Drag to rotate · click a part or a button below</span></div>
+<div class="row" id="pb" style="margin-top:8px"></div><div class="res" id="pt" style="font-family:inherit;font-size:14px">Select a component to see how it works.</div></div></section>
+
+<section class="sec" id="s1"><div class="card"><h3>Disk characteristics</h3>
+<div class="row"><label>Disk (database)<select id="dsel"></select></label><label>RPM<input id="rpm" type="number"></label><label>Avg seek (ms)<input id="seek" type="number" step="0.1"></label><label>Peak transfer (MB/s)<input id="rate" type="number"></label><label>Capacity (GB)<input id="cap" type="number"></label></div>
+<div class="row" style="margin-top:8px"><label>Random request (KB)<input id="rsz" type="number" value="4"></label><label>Sequential transfer (MB)<input id="ssz" type="number" value="100"></label></div>
+<div class="mu" id="mode" style="margin-top:6px"></div>
+<h3>Add to database</h3><div class="row"><label>New disk name<input id="nn" placeholder="e.g. WD Ultrastar"></label><button class="btn pri" id="bAdd" style="align-self:flex-end">Save current values as new disk</button><button class="btn" id="bDel" style="align-self:flex-end">Delete selected (custom only)</button></div>
+<div class="mu">Editing the numbers above is manual mode: results update but nothing is saved unless you press Save. Custom disks are stored in this browser. The list is a starter set, not every drive ever made.</div></div>
+<div class="card"><div class="row"><div>Random <b>T<sub>I/O</sub></b><div class="big" id="tR"></div></div><div>Random <b>R<sub>I/O</sub></b><div class="big" id="rR"></div></div><div>Sequential <b>T<sub>I/O</sub></b><div class="big" id="tS"></div></div><div>Sequential <b>R<sub>I/O</sub></b><div class="big" id="rS"></div></div></div><div class="res" id="cx"></div></div></section>
+
+<section class="sec" id="s2"><div class="card"><h3>RAID simulation</h3>
+<div class="row"><label>Level<select id="lv"><option>0</option><option>1</option><option selected>5</option><option>4</option></select></label><label>Disks N<input id="N" type="number" value="5" min="2" max="12"></label><label>Per-disk capacity (GB)<input id="rc" type="number"></label><label>Block A to locate<input id="bA" type="number" value="14"></label></div>
+<div class="mu">Per-disk S (sequential) and R (random) come from the disk selected in the Calculator tab.</div>
+<div id="rl" style="margin:10px 0"></div><div class="res" id="rm"></div></div>
+<div class="card"><h3>Comparison table (N disks)</h3><div class="tw" id="rt"></div><div class="res" id="re"></div></div>
+<div class="card"><h3>Parity (XOR) demo</h3><div class="row"><label>Data blocks (0–255, comma separated)<input id="pd" value="12,200,77,145" style="min-width:220px"></label><label>Lost disk index<input id="pl" type="number" value="2" min="0"></label><label>New value for block 1 (small write)<input id="pn" type="number" value="99"></label></div><div class="res" id="pr"></div></div></section>
+
+<section class="sec" id="s3"><div class="card"><h3>Disk scheduling</h3>
+<div class="row"><label>Requests (tracks 0–99)<input id="qs" value="98,183,37,122,14,124,65,67" style="min-width:230px"></label><label>Head start<input id="hs" type="number" value="53"></label><label>Seek ms/track<input id="mt" type="number" value="0.1" step="0.01"></label><label>Policy<select id="pol"><option>FIFO</option><option>SSTF</option><option>SCAN</option><option>C-SCAN</option></select></label></div>
+<div id="sv"></div><div class="res" id="sr"></div><div class="mu">Requests above 99 are clamped. SCAN sweeps up first then reverses; C-SCAN sweeps up then jumps back to 0. SSTF can starve far requests; SATF (not drawn) also accounts for rotation.</div></div>
+<div class="card"><h3>FFS / LFS amortization: how big must a chunk be?</h3>
+<div class="row"><label>Target fraction F of peak (0–1)<input id="af" type="number" value="0.9" step="0.01"></label><label>Positioning time (ms)<input id="ap" type="number" value="10"></label><label>Peak rate (MB/s)<input id="ar" type="number" value="100"></label></div><div class="res" id="ac"></div></div>
+<div class="card"><h3>Checksums (data integrity)</h3><div class="row"><label>Bytes (0–255, comma separated)<input id="cb" value="1,2,3,4" style="min-width:200px"></label><label>Compare with<input id="cb2" value="4,3,2,1" style="min-width:200px"></label></div><div class="res" id="cr"></div></div>
+<div class="card"><h3>SSD vs HDD quick ratio</h3><div class="row"><label>HDD random IOPS-ish MB/s<input id="hr" type="number" value="2" step="0.1"></label><label>SSD random MB/s<input id="sr2" type="number" value="100"></label></div><div class="res" id="ssr"></div></div></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),f=(n,d=3)=>(+(+n).toFixed(d)).toLocaleString();
+const SEED=[["Seagate Cheetah 15K.5",15000,4,125,300,"SCSI"],["Seagate Barracuda (7.2K)",7200,9,105,1000,"SATA"],["OSTEP example disk",10000,7,50,100,"–"],["Typical 5400 RPM laptop",5400,12,80,500,"SATA"],["Typical 7200 RPM desktop",7200,8.5,150,2000,"SATA"],["Typical 10K enterprise",10000,4.5,150,600,"SAS"]].map(a=>({n:a[0],rpm:a[1],seek:a[2],rate:a[3],cap:a[4],i:a[5]}));
+let custom=[];try{custom=JSON.parse(localStorage.getItem("cdisks")||"[]")}catch(e){}
+const all=()=>SEED.concat(custom);
+function fillSel(v){$("dsel").innerHTML=all().map((d,i)=>`<option value="${i}">${d.n}${i>=SEED.length?" (custom)":""}</option>`).join("");$("dsel").value=v??0;load()}
+function load(){const d=all()[$("dsel").value];$("rpm").value=d.rpm;$("seek").value=d.seek;$("rate").value=d.cap&&d.rate;$("rate").value=d.rate;$("cap").value=d.cap;$("rc").value=d.cap;calc()}
+function D(){return{rpm:+$("rpm").value||1,seek:+$("seek").value||0,rate:+$("rate").value||1}}
+function io(kb){const d=D(),rot=60000/d.rpm/2,tr=kb/1024/d.rate*1000,T=d.seek+rot+tr;return{seek:d.seek,rot,tr,T,R:kb/1024/(T/1000)}}
+function calc(){const d=D(),r=io(+$("rsz").value||4),s=io((+$("ssz").value||100)*1024),full=60000/d.rpm;
+const sel=all()[$("dsel").value],edited=!sel||sel.rpm!=$("rpm").value||sel.seek!=$("seek").value||sel.rate!=$("rate").value;
+$("mode").textContent=edited?"Manual mode: values differ from the database entry, results are not saved.":"Using database entry.";
+$("tR").textContent=f(r.T)+" ms";$("rR").textContent=f(r.R)+" MB/s";$("tS").textContent=f(s.T)+" ms";$("rS").textContent=f(s.R)+" MB/s";
+$("cx").textContent=`1) One rotation = 60,000 ms / ${d.rpm} RPM = ${f(full)} ms\n2) Avg rotational delay = half a rotation = ${f(r.rot)} ms\n3) Avg seek (given) = ${f(d.seek)} ms\n\nRANDOM (${$("rsz").value} KB)\n   T_transfer = ${$("rsz").value} KB / 1024 / ${d.rate} MB/s x 1000 = ${f(r.tr,4)} ms\n   T_I/O = T_seek + T_rotation + T_transfer = ${f(r.seek)} + ${f(r.rot)} + ${f(r.tr,4)} = ${f(r.T)} ms\n   R_I/O = Size / T_I/O = ${f($("rsz").value/1024,4)} MB / ${f(r.T/1000,5)} s = ${f(r.R)} MB/s\n\nSEQUENTIAL (${$("ssz").value} MB, one seek + one rotation)\n   T_transfer = ${$("ssz").value} MB / ${d.rate} MB/s = ${f(s.tr)} ms\n   T_I/O = ${f(s.seek)} + ${f(s.rot)} + ${f(s.tr)} = ${f(s.T)} ms\n   R_I/O = ${$("ssz").value} MB / ${f(s.T/1000,4)} s = ${f(s.R)} MB/s\n\nSequential is ${f(s.R/r.R,1)}x faster than random: use disks sequentially.`;
+raid();extras()}
+$("dsel").onchange=load;["rpm","seek","rate","cap","rsz","ssz"].forEach(i=>$(i).oninput=calc);
+$("bAdd").onclick=()=>{const n=$("nn").value.trim();if(!n)return alert("Enter a name for the new disk.");const d=D();custom.push({n,rpm:d.rpm,seek:d.seek,rate:d.rate,cap:+$("cap").value||0,i:"custom"});try{localStorage.setItem("cdisks",JSON.stringify(custom))}catch(e){}fillSel(all().length-1);$("nn").value=""};
+$("bDel").onclick=()=>{const i=+$("dsel").value;if(i<SEED.length)return alert("Built-in disks can’t be deleted.");custom.splice(i-SEED.length,1);try{localStorage.setItem("cdisks",JSON.stringify(custom))}catch(e){}fillSel(0)};
+
+/* RAID */
+function layout(L,N,rows){const g=[];for(let r=0;r<rows;r++){const a=[];let k=0;for(let d=0;d<N;d++){if(L==0)a.push(r*N+d);else if(L==1)a.push(r*(N/2)+(d>>1));else if(L==4)a.push(d<N-1?r*(N-1)+d:"P"+r);else{const p=N-1-(r%N);a.push(d==p?"P"+r:r*(N-1)+k++)}}g.push(a)}return g}
+function raid(){const L=+$("lv").value;let N=Math.max(2,Math.min(12,+$("N").value||4));if(L==1&&N%2)N++;if(L>3&&N<3)N=3;$("N").value=N;
+const B=+$("rc").value||0,S=io((+$("ssz").value||100)*1024).R,R=io(+$("rsz").value||4).R,T=io(+$("rsz").value||4).T;
+const rows=Math.max(4,Math.ceil(((+$("bA").value||0)+1)/(L==0?N:L==1?N/2:N-1))),g=layout(L,N,rows),A=+$("bA").value||0;
+let h='<div class="g" style="grid-template-columns:repeat('+(N+1)+',auto)"><div style="border:0"></div>'+Array.from({length:N},(_,i)=>`<div style="border:0;color:var(--mu)">D${i}</div>`).join("");
+g.forEach((r,ri)=>{h+=`<div style="border:0;color:var(--mu)">${ri}</div>`+r.map(v=>`<div class="${typeof v=="string"?"p":""} ${v===A?"h":""}">${v}</div>`).join("")});$("rl").innerHTML=h+"</div>";
+let loc="";g.forEach((r,ri)=>r.forEach((v,d)=>{if(v===A)loc+=` disk ${d}, offset ${ri}`+(L==1?";":"")}));
+const eq={0:`Disk = A % N = ${A} % ${N} = ${A%N}\nOffset = A / N = ${Math.floor(A/N)}`,1:`Mirror pairs = N/2 = ${N/2}. Pair = A % ${N/2} = ${A%(N/2)} -> disks ${2*(A%(N/2))} and ${2*(A%(N/2))+1}\nOffset = A / ${N/2} = ${Math.floor(A/(N/2))}. Reads may use either copy, writes go to both.`,4:`Data disks = N-1 = ${N-1}. Disk = A % ${N-1} = ${A%(N-1)}, stripe/offset = A / ${N-1} = ${Math.floor(A/(N-1))}\nParity P${Math.floor(A/(N-1))} lives on the dedicated last disk (D${N-1}).`,5:`Data per stripe = N-1 = ${N-1}. Stripe = A / ${N-1} = ${Math.floor(A/(N-1))}\nParity disk rotates (left-asymmetric): D${N-1-(Math.floor(A/(N-1))%N)} for this stripe; data skips that disk.`}[L];
+$("rm").textContent=`Mapping problem: where is block ${A}? (highlighted green)\n${eq}\nResult:${loc}`;
+const rows2=[["0","N·B","0","N·S","N·S","N·R","N·R","T","T"],["1","N·B/2","1 (up to N/2)","(N/2)·S","(N/2)·S","N·R","(N/2)·R","T","T"],["4","(N-1)·B","1","(N-1)·S","(N-1)·S","(N-1)·R","R/2","T","2T"],["5","(N-1)·B","1","(N-1)·S","(N-1)·S","N·R","(N/4)·R","T","2T"]];
+const v=l=>{const c=[N*B,N*B/2,(N-1)*B,(N-1)*B][[0,1,4,5].indexOf(l)];const a=[N*S,N/2*S,(N-1)*S,(N-1)*S],b=[N*R,N*R,(N-1)*R,N*R],w=[N*R,N/2*R,R/2,N/4*R],i=[0,1,4,5].indexOf(l);return[f(c,0)+" GB",null,f(a[i],1),f(a[i],1),f(b[i],2),f(w[i],2)]};
+$("rt").innerHTML=`<table><tr><th>RAID</th><th>Capacity</th><th>Faults</th><th>Seq read</th><th>Seq write</th><th>Rand read</th><th>Rand write</th><th>Latency R / W</th></tr>`+rows2.map(r=>{const x=v(+r[0]);return`<tr class="${r[0]==L?"sel":""}"><td>${r[0]}</td><td>${r[1]}<br>${x[0]}</td><td>${r[2]}</td><td>${r[3]}<br>${x[2]} MB/s</td><td>${r[4]}<br>${x[3]} MB/s</td><td>${r[5]}<br>${x[4]} MB/s</td><td>${r[6]}<br>${x[5]} MB/s</td><td>${f(T,2)} ms / ${r[8]=="T"?f(T,2):f(2*T,2)} ms</td></tr>`}).join("")+"</table>";
+$("re").textContent=`Inputs: N=${N}, B=${f(B,0)} GB, S=${f(S,2)} MB/s (sequential), R=${f(R,3)} MB/s (random), T=${f(T,2)} ms.\nRAID-0: striping, everything scales with N, any failure loses data.\nRAID-1: each write = 2 physical writes (half the write bandwidth); capacity N·B/2; sequential read also only (N/2)·S because each disk skips every other block.\nRAID-4: one parity disk. Small write = 4 I/Os (read old data + old parity, write new data + new parity), all queued on the parity disk -> R/2 regardless of N.\nRAID-5: parity rotates so those 4 I/Os spread over all disks -> N/4·R. Capacity and fault tolerance equal RAID-4.\nSmall-write (subtractive parity): P_new = (C_old XOR C_new) XOR P_old. Full-stripe writes avoid it, giving (N-1)·S.`;
+parity()}
+function parity(){const b=$("pd").value.split(",").map(x=>(+x)&255),p=b.reduce((a,x)=>a^x,0),l=Math.min(+$("pl").value||0,b.length-1),rest=b.filter((_,i)=>i!=l).reduce((a,x)=>a^x,0)^p,bin=x=>x.toString(2).padStart(8,"0"),nv=(+$("pn").value)&255,pn=(b[1]^nv)^p;
+$("pr").textContent=b.map((x,i)=>`Block ${i}: ${bin(x)} (${x})`).join("\n")+`\nParity = XOR of all = ${bin(p)} (${p})\n\nDisk ${l} fails. Rebuild: XOR of surviving blocks and parity = ${bin(rest)} (${rest}) ${rest==b[l]?"= original ✓":""}\n\nSmall write to block 1: ${b[1]} -> ${nv}\nP_new = (${b[1]} XOR ${nv}) XOR ${p} = ${pn}  (check by full XOR: ${b.map((x,i)=>i==1?nv:x).reduce((a,x)=>a^x,0)})`}
+["lv","N","rc","bA"].forEach(i=>$(i).oninput=raid);["pd","pl","pn"].forEach(i=>$(i).oninput=parity);
+
+/* Extras */
+function extras(){
+const q=$("qs").value.split(",").map(x=>Math.max(0,Math.min(99,+x||0))),h=+$("hs").value||0,pol=$("pol").value;let o=[],rest=q.slice(),c=h;
+if(pol=="FIFO")o=q;else if(pol=="SSTF"){while(rest.length){let j=0;rest.forEach((x,i)=>{if(Math.abs(x-c)<Math.abs(rest[j]-c))j=i});c=rest.splice(j,1)[0];o.push(c)}}
+else{const up=q.filter(x=>x>=h).sort((a,b)=>a-b),dn=q.filter(x=>x<h).sort((a,b)=>a-b);o=pol=="SCAN"?up.concat(dn.reverse()):up.concat(dn)}
+let path=[h].concat(o),dist=0;if(pol=="C-SCAN"&&q.some(x=>x<h)){path=[h].concat(q.filter(x=>x>=h).sort((a,b)=>a-b),[99,0],q.filter(x=>x<h).sort((a,b)=>a-b))}
+for(let i=1;i<path.length;i++)dist+=Math.abs(path[i]-path[i-1]);
+$("sv").innerHTML=`<svg viewBox="0 0 400 130" width="100%" style="max-height:200px"><polyline fill="none" stroke="var(--ac)" stroke-width="2" points="${path.map((t,i)=>`${10+i*380/Math.max(1,path.length-1)},${120-t*1.1}`).join(" ")}"/>${path.map((t,i)=>`<circle cx="${10+i*380/Math.max(1,path.length-1)}" cy="${120-t*1.1}" r="3" fill="var(--ok)"/>`).join("")}</svg>`;
+$("sr").textContent=`Service order: ${o.join(" → ")}\nHead path: ${path.join(" → ")}\nTotal seek distance = ${dist} tracks\nSeek time = ${dist} × ${$("mt").value} ms = ${f(dist*$("mt").value)} ms`;
+const F=+$("af").value,P=+$("ap").value,Rk=+$("ar").value,Dm=F/(1-F)*Rk*P/1000;
+$("ac").textContent=`D = F/(1−F) × R_peak × T_position\n  = ${f(F)}/(${f(1-F)}) × ${Rk} MB/s × ${P/1000} s = ${f(Dm)} MB\nTo spend ${f(F*100,1)}% of time transferring, write/read chunks of ${f(Dm)} MB (${f(Dm*1024,1)} KB) per positioning. This is why LFS buffers whole segments and FFS spreads large files in big chunks.`;
+const bs=s=>s.split(",").map(x=>(+x)&255),ck=a=>{let s=0,x=0,s1=0,s2=0;a.forEach(v=>{s=(s+v)&255;x^=v;s1=(s1+v)%255;s2=(s2+s1)%255});return{add:s,xor:x,fl:(s2<<8)|s1,s1,s2}},a=ck(bs($("cb").value)),b=ck(bs($("cb2").value));
+$("cr").textContent=`Input A: additive=${a.add}  XOR=${a.xor}  Fletcher(s1=${a.s1}, s2=${a.s2})=0x${a.fl.toString(16)}\nInput B: additive=${b.add}  XOR=${b.xor}  Fletcher(s1=${b.s1}, s2=${b.s2})=0x${b.fl.toString(16)}\nAdditive/XOR ignore order; Fletcher’s second sum (s2) is position-sensitive, so reordering changes it. Overhead: an 8-byte checksum per 4 KB block = ${f(8/4096*100,2)}% space.`;
+const hr=+$("hr").value||1,sr=+$("sr2").value||0;$("ssr").textContent=`SSD random is ${f(sr/hr,1)}x faster than the HDD here.\nFlash ops: read ~10s of µs, program ~100s of µs, erase ~ms per block, so SSDs use a log-structured FTL (garbage collection, wear leveling) to hide erase costs.`}
+["qs","hs","mt","pol","af","ap","ar","cb","cb2","hr","sr2"].forEach(i=>$(i).oninput=extras);
+
+/* Tabs */
+["3D Disk","Calculator","RAID","More sims"].forEach((t,i)=>{const b=document.createElement("button");b.textContent=t;b.onclick=()=>{document.querySelectorAll(".sec").forEach((s,j)=>s.classList.toggle("on",i==j));[...$("nav").children].forEach((c,j)=>c.classList.toggle("on",i==j));if(i==0)resize()};if(!i)b.className="on";$("nav").appendChild(b)});
+
+/* 3D */
+const INFO={platter:["Platter","A circular aluminium/glass disk coated with a thin magnetic layer. Data is stored as magnetic patterns. Each platter has 2 surfaces; all platters spin together on the spindle."],spindle:["Spindle & motor","The motor spins all platters at a constant rate (typically 7,200–15,000 RPM). One rotation at 10,000 RPM takes 6 ms, which sets the rotational delay."],track:["Tracks & sectors","Data is written in concentric circles called tracks, divided into 512-byte sectors (green wedge). Outer tracks hold more sectors (multi-zoned drives). Track skew offsets sectors so sequential reads survive head moves."],arm:["Actuator arm","Moves the head across the surface to the right track. A seek has acceleration, coasting, deceleration and settling (0.5–2 ms). Average seek ≈ one-third of a full seek."],head:["Read/write head","One head per surface senses or changes the magnetic pattern. Total I/O time = seek + rotational delay + transfer."],board:["Controller & cache","Electronics with a small cache (track buffer, 8–32 MB). It can reorder requests (SPTF) because it knows head position, and may use write-back caching."]};
+let sc,cam,rd,root,arm,plat=[],sel=null,spin=true,seekOn=false,ry=.6,rx=.5,drag=null,ok=false;
+function mk(g,c,p,o){const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:.5,roughness:.4},o||{})));m.userData.part=p;root.add(m);return m}
+function init(){if(ok||!window.THREE)return;ok=true;const el=$("cv");sc=new THREE.Scene();cam=new THREE.PerspectiveCamera(45,1,.1,100);cam.position.set(0,6,9);cam.lookAt(0,0,0);rd=new THREE.WebGLRenderer({antialias:true});el.appendChild(rd.domElement);sc.add(new THREE.AmbientLight(0xffffff,.6));const dl=new THREE.DirectionalLight(0xffffff,.9);dl.position.set(4,8,5);sc.add(dl);root=new THREE.Group();sc.add(root);
+mk(new THREE.BoxGeometry(6.4,.3,6.4),0x4a5565,"board").position.y=-.1;const pcb=mk(new THREE.BoxGeometry(5,.08,3),0x167a3e,"board");pcb.position.set(0,-.34,0);
+[.35,.8].forEach(y=>{const p=mk(new THREE.CylinderGeometry(2.3,2.3,.06,64),0x9fb2c7,"platter",{transparent:true,opacity:.85});p.position.y=y;plat.push(p);if(y==.35){[.6,1,1.4,1.8].forEach(r=>{const t=new THREE.Mesh(new THREE.RingGeometry(r,r+.02,64),new THREE.MeshBasicMaterial({color:0x344255,side:2}));t.rotation.x=-Math.PI/2;t.position.y=.04;t.userData.part="track";p.add(t)});const w=mk(new THREE.CylinderGeometry(1.8,1.8,.01,16,1,false,0,.25),0x22c55e,"track");root.remove(w);w.position.y=.04;w.userData.part="track";w.scale.set(1,1,1);p.add(w);w.geometry=new THREE.CylinderGeometry(1.9,.5,.01,16,1,false,0,.3)}});
+mk(new THREE.CylinderGeometry(.35,.35,1.2,24),0xd4a017,"spindle").position.y=.6;
+const piv=new THREE.Group();piv.position.set(2.8,.65,2.8);root.add(piv);arm=piv;const a=mk(new THREE.BoxGeometry(3,.08,.18),0xd0d6de,"arm");root.remove(a);a.position.x=-1.5;piv.add(a);const hd=mk(new THREE.BoxGeometry(.3,.08,.25),0xef4444,"head");root.remove(hd);hd.position.x=-3;piv.add(hd);const pm=mk(new THREE.CylinderGeometry(.22,.22,.5,16),0x6b7280,"arm");root.remove(pm);piv.add(pm);
+$("pb").innerHTML="";Object.keys(INFO).forEach(k=>{const b=document.createElement("button");b.className="btn";b.textContent=INFO[k][0];b.onclick=()=>pick(k);$("pb").appendChild(b)});
+el.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,m:0}};window.onpointerup=()=>drag=null;el.onpointermove=e=>{if(!drag)return;ry+=(e.clientX-drag.x)*.008;rx=Math.max(-.2,Math.min(1.4,rx+(e.clientY-drag.y)*.006));drag.x=e.clientX;drag.y=e.clientY;drag.m=1};
+el.onclick=e=>{if(drag&&drag.m)return;const r=rd.domElement.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),rc=new THREE.Raycaster();rc.setFromCamera(v,cam);const h=rc.intersectObjects(root.children,true)[0];if(h)pick(h.object.userData.part)};
+$("bSeek").onclick=()=>seekOn=!seekOn;$("bSpin").onclick=e=>{spin=!spin;e.target.textContent=spin?"Pause spin":"Resume spin"};resize();loop()}
+function pick(k){sel=k;$("pt").innerHTML="<b>"+INFO[k][0]+"</b><br>"+INFO[k][1];root.traverse(o=>{if(o.material&&o.material.emissive)o.material.emissive.setHex(o.userData.part==k?0x2255aa:0)})}
+function resize(){if(!rd)return;const w=$("cv").clientWidth||600;rd.setSize(w,380);cam.aspect=w/380;cam.updateProjectionMatrix()}
+window.onresize=resize;let t0=0;
+function loop(){requestAnimationFrame(loop);if(!$("s0").classList.contains("on"))return;t0+=.016;const sp=D().rpm/15000*.3;if(spin)plat.forEach(p=>p.rotation.y+=sp);arm.rotation.y=-Math.PI/4+(seekOn?.32*Math.sin(t0*1.6):0);root.rotation.y=ry;root.rotation.x=rx-.5;rd.render(sc,cam)}
+fillSel(0);extras();init();if(!ok)$("pt").textContent="3D engine failed to load; the calculators still work."
+</script></body></html>
