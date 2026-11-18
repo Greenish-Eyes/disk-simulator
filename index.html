@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Disk &amp; RAID Simulator</title>
+<link rel="stylesheet" href="css/styles.css">
+</head><body><main>
+<header class="top"><span class="logo"><b>DL</b><span>DISK LAB</span></span><nav id="nav"></nav><span class="mu" style="white-space:nowrap">Based on OSTEP</span></header>
+<section class="hero"><div><p class="eye">Mechanical storage, made visible</p><h1>See every millisecond <span>inside a hard disk.</span></h1><p class="lead">Explore the mechanics, change real drive characteristics, and watch seek, rotation and transfer combine into I/O performance. Then simulate RAID, journaling, LFS and SSDs.</p></div><div class="tiles"><div><small>Catalog</small><b id="st1">6</b><small>drive profiles</small></div><div><small>Simulators</small><b>9</b><small>and growing</small></div></div></section>
+
+
+<section class="sec on" id="s0"><div class="card"><div id="cv"><div class="ov"><small>Interactive 3D model</small><b>Hard disk drive</b></div></div>
+<div class="row" style="margin-top:8px"><button class="btn" id="bSeek">Toggle seek animation</button><button class="btn" id="bEx">Exploded view</button><button class="btn" id="bFlip">Flip to controller PCB</button><button class="btn" id="bSpin">Pause spin</button><span class="mu">Drag to rotate · wheel to zoom · click a part or a button below</span></div>
+<div class="row" id="pb" style="margin-top:8px"></div><div class="res" id="pt" style="font-family:inherit;font-size:14px">Select a component to see how it works.</div></div></section>
+
+<section class="sec" id="s1"><div class="card"><h3>Disk characteristics</h3>
+<div class="row"><label>Disk (database)<select id="dsel"></select></label><label>RPM<input id="rpm" type="number"></label><label>Avg seek (ms)<input id="seek" type="number" step="0.1"></label><label>Peak transfer (MB/s)<input id="rate" type="number"></label><label>Capacity (GB)<input id="cap" type="number"></label></div>
+<div class="row" style="margin-top:8px"><label>Random request (KB)<input id="rsz" type="number" value="4"></label><label>Sequential transfer (MB)<input id="ssz" type="number" value="100"></label></div>
+<div class="mu" id="mode" style="margin-top:6px"></div>
+<h3>Add to database</h3><div class="row"><label>New disk name<input id="nn" placeholder="e.g. WD Ultrastar"></label><button class="btn pri" id="bAdd" style="align-self:flex-end">Save current values as new disk</button><button class="btn" id="bDel" style="align-self:flex-end">Delete selected (custom only)</button></div>
+<div class="mu">Editing the numbers above is manual mode: results update but nothing is saved unless you press Save. Custom disks are stored in this browser. The list is a starter set, not every drive ever made.</div></div>
+<div class="card"><div class="row"><div>Random <b>T<sub>I/O</sub></b><div class="big" id="tR"></div></div><div>Random <b>R<sub>I/O</sub></b><div class="big" id="rR"></div></div><div>Sequential <b>T<sub>I/O</sub></b><div class="big" id="tS"></div></div><div>Sequential <b>R<sub>I/O</sub></b><div class="big" id="rS"></div></div></div><div id="bars"></div><div class="res" id="cx"></div></div></section>
+
+<section class="sec" id="s2"><div class="card"><h3>RAID simulation</h3>
+<div class="row"><label>Level<select id="lv"><option>0</option><option>1</option><option selected>5</option><option>4</option></select></label><label>Disks N<input id="N" type="number" value="5" min="2" max="12"></label><label>Per-disk capacity (GB)<input id="rc" type="number"></label><label>Block A to locate<input id="bA" type="number" value="14"></label></div>
+<div class="mu">Per-disk S (sequential) and R (random) come from the disk selected in the Calculator tab.</div>
+<div id="rl" style="margin:10px 0"></div><div class="res" id="rm"></div></div>
+<div class="card"><h3>Comparison table (N disks)</h3><div class="tw" id="rt"></div><div class="res" id="re"></div></div>
+<div class="card"><h3>Parity (XOR) demo</h3><div class="row"><label>Data blocks (0–255, comma separated)<input id="pd" value="12,200,77,145" style="min-width:220px"></label><label>Lost disk index<input id="pl" type="number" value="2" min="0"></label><label>New value for block 1 (small write)<input id="pn" type="number" value="99"></label></div><div class="res" id="pr"></div></div></section>
+
+<section class="sec" id="s3"><div class="card"><h3>Disk scheduling</h3>
+<div class="row"><label>Requests (tracks 0–99)<input id="qs" value="98,183,37,122,14,124,65,67" style="min-width:230px"></label><label>Head start<input id="hs" type="number" value="53"></label><label>Seek ms/track<input id="mt" type="number" value="0.1" step="0.01"></label><label>Policy<select id="pol"><option>FIFO</option><option>SSTF</option><option>SCAN</option><option>C-SCAN</option></select></label></div>
+<div id="sv"></div><div class="res" id="sr"></div><div class="mu">Requests above 99 are clamped. SCAN sweeps up first then reverses; C-SCAN sweeps up then jumps back to 0. SSTF can starve far requests; SATF (not drawn) also accounts for rotation.</div></div>
+<div class="card"><h3>FFS / LFS amortization: how big must a chunk be?</h3>
+<div class="row"><label>Target fraction F of peak (0–1)<input id="af" type="number" value="0.9" step="0.01"></label><label>Positioning time (ms)<input id="ap" type="number" value="10"></label><label>Peak rate (MB/s)<input id="ar" type="number" value="100"></label></div><div class="res" id="ac"></div></div>
+<div class="card"><h3>Checksums (data integrity)</h3><div class="row"><label>Bytes (0–255, comma separated)<input id="cb" value="1,2,3,4" style="min-width:200px"></label><label>Compare with<input id="cb2" value="4,3,2,1" style="min-width:200px"></label></div><div class="res" id="cr"></div></div>
+<div class="card"><h3>SSD vs HDD quick ratio</h3><div class="row"><label>HDD random IOPS-ish MB/s<input id="hr" type="number" value="2" step="0.1"></label><label>SSD random MB/s<input id="sr2" type="number" value="100"></label></div><div class="res" id="ssr"></div></div></section>
+<section class="sec" id="s4">
+<div class="card"><h3>Crash consistency: journaling</h3><div class="mu">Workload (chapter 42): append one 4 KB block to a file, which needs three writes: data block Db, bitmap B[v2] and inode I[v2]. Pick a mode and what reached the disk before the crash.</div>
+<div class="row" style="margin-top:8px"><label>Mode<select id="jm"><option value="n">No journal (fsck)</option><option value="d">Data journaling</option><option value="o">Ordered (metadata) journaling</option></select></label><label>Crash happens<select id="jc"></select></label></div><div class="res" id="jr"></div></div>
+<div class="card"><h3>LFS segment cleaner</h3><div class="mu">Four files a–d (4 blocks each) are written to the log, then overwritten blocks are appended to new segments (4 blocks per segment). ’ marks a rewritten version; struck-through blocks are dead.</div>
+<div class="row" style="margin-top:8px"><label>Overwrites (file+block, a–d, 0–3)<input id="lo" value="a1,c0,c2,b3,a3,d0,d1,b0" style="min-width:240px"></label><label>Segments to clean<input id="lk" type="number" value="2" min="1"></label></div><div id="lv"></div><div class="res" id="lr"></div></div>
+<div class="card"><h3>SSD: FTL &amp; garbage collection</h3><div class="mu">Log-structured page-mapped FTL. Writes append to the active block; overwrites leave dead pages; when free blocks run low, GC copies live pages out of the emptiest block and erases it. Cells: logical page number (green = live, struck = garbage, E = erased).</div>
+<div class="row" style="margin-top:8px"><label>Flash blocks<input id="fb" type="number" value="4" min="3" max="8"></label><label>Pages per block<input id="fp" type="number" value="4" min="2" max="8"></label><label>Read (µs)<input id="frd" type="number" value="25"></label><label>Program (µs)<input id="fpg" type="number" value="250"></label><label>Erase (µs)<input id="fe" type="number" value="1500"></label></div>
+<div class="row" style="margin-top:8px"><label>Host writes (logical pages)<input id="fw" value="100,101,2000,2001,100,101,100,101,100,101,2000,100,101,100,101,2001,100,101" style="min-width:320px"></label><button class="btn" id="fR" style="align-self:flex-end">Random skewed workload</button></div><div id="fv"></div><div class="res" id="ft"></div></div></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/raid.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/disk3d.js"></script>
+<script src="js/storage-sims.js"></script>
+<script src="js/main.js"></script>
+</body></html>
