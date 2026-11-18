@@ -13,11 +13,11 @@ const sg=(S,t)=>`<div class="mu" style="margin-top:8px">${t}</div><div class="g"
 function lfs(){const ow=$("lo").value.split(",").map(s=>s.trim().toLowerCase()).filter(x=>/^[a-d][0-3]$/.test(x)),log=[];"abcd".split("").forEach(c=>[0,1,2,3].forEach(o=>log.push({f:c,o,v:0})));ow.forEach((s,i)=>log.push({f:s[0],o:+s[1],v:i+1}));
 const lat={};log.forEach((b,i)=>lat[b.f+b.o]=i);log.forEach((b,i)=>b.live=lat[b.f+b.o]==i);const S=[];for(let i=0;i<log.length;i+=4)S.push(log.slice(i,i+4));const tot=S.length+2;while(S.length<tot)S.push([]);
 const k=Math.max(1,+$("lk").value||1),cand=S.map((s,i)=>({i,l:s.filter(b=>b.live).length,n:s.length})).filter(c=>c.n==4).sort((a,b)=>a.l-b.l||a.i-b.i).slice(0,k),ids=cand.map(c=>c.i);
-if(!cand.length){$("lv").innerHTML=sg(S,"Log");$("lr").textContent="No full segment to clean.";return}
+if(!cand.length){$("lfv").innerHTML=sg(S,"Log");$("lr").textContent="No full segment to clean.";return}
 const live=ids.flatMap(i=>S[i].filter(b=>b.live)),S2=S.map((s,i)=>ids.includes(i)?[]:s),empt=S2.map((s,i)=>s.length?-1:i).filter(i=>i>=0),n=Math.ceil(live.length/4);
 for(let j=0;j<n;j++)S2[empt[j]]=live.slice(j*4,j*4+4).map(b=>({...b,live:true}));
 const e=S[ids[0]][0],li=lat[e.f+e.o],pos=x=>`S${x>>2}.${x%4}`,me=`S${ids[0]}.0`;
-$("lv").innerHTML=sg(S,"Before cleaning (green outline = live)")+sg(S2,`After cleaning segments ${ids.map(i=>"S"+i).join(", ")}`);
+$("lfv").innerHTML=sg(S,"Before cleaning (green outline = live)")+sg(S2,`After cleaning segments ${ids.map(i=>"S"+i).join(", ")}`);
 $("lr").textContent=`Cleaner reads M=${ids.length} segment(s) with the lowest utilization: ${cand.map(c=>`S${c.i} (${c.l}/4 live)`).join(", ")}\nLive blocks found: ${live.length}. Compacted into N=${n} segment(s) (N < M needed to gain space). Net freed: ${ids.length-n} segment(s).\nCleaning I/O: read ${ids.length*4} blocks, write ${live.length} blocks.\n\nLiveness check for block at ${me}: segment summary says (inode ${e.f}, offset ${e.o}); imap gives the inode; the inode points to ${pos(li)}. ${pos(li)==me?"That equals the block’s address, so it is LIVE.":"That differs from "+me+", so the block is DEAD."}\nPolicy note: cold segments (stable data) are worth cleaning sooner; hot segments are better left to accumulate more dead blocks.`}
 $("lo").oninput=lfs;$("lk").oninput=lfs;
 /* FTL */
