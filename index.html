@@ -18,14 +18,18 @@
 <div class="mu" id="mode" style="margin-top:6px"></div>
 <h3>Add to database</h3><div class="row"><label>New disk name<input id="nn" placeholder="e.g. WD Ultrastar"></label><button class="btn pri" id="bAdd" style="align-self:flex-end">Save current values as new disk</button><button class="btn" id="bDel" style="align-self:flex-end">Delete selected (custom only)</button></div>
 <div class="mu">Editing the numbers above is manual mode: results update but nothing is saved unless you press Save. Custom disks are stored in this browser. The list is a starter set, not every drive ever made.</div></div>
-<div class="card"><div class="row"><div>Random <b>T<sub>I/O</sub></b><div class="big" id="tR"></div></div><div>Random <b>R<sub>I/O</sub></b><div class="big" id="rR"></div></div><div>Sequential <b>T<sub>I/O</sub></b><div class="big" id="tS"></div></div><div>Sequential <b>R<sub>I/O</sub></b><div class="big" id="rS"></div></div></div><div id="bars"></div><div class="res" id="cx"></div></div></section>
+<div class="card"><div class="row"><div>Random <b>T<sub>I/O</sub></b><div class="big" id="tR"></div><small class="mu" id="tR2"></small></div><div>Random <b>R<sub>I/O</sub></b><div class="big" id="rR"></div><small class="mu" id="rR2"></small></div><div>Sequential <b>T<sub>I/O</sub></b><div class="big" id="tS"></div><small class="mu" id="tS2"></small></div><div>Sequential <b>R<sub>I/O</sub></b><div class="big" id="rS"></div><small class="mu" id="rS2"></small></div></div><div id="bars"></div><div class="steps" id="cx"></div></div>
+<div class="card"><h3>Unit converter</h3><div class="row"><label>Value<input id="cvv" type="number" value="300" step="any"></label>
+<label>Unit<select id="cvu"><optgroup label="Data size"><option>byte</option><option>KB</option><option>MB</option><option selected>GB</option><option>TB</option></optgroup><optgroup label="Time"><option>µs</option><option>ms</option><option>s</option><option>min</option></optgroup></select></label>
+<label>1 KB =<select id="cvb"><option value="1024">1,024 bytes (binary, as in OSTEP)</option><option value="1000">1,000 bytes (decimal)</option></select></label>
+<button class="btn" id="cvd" style="align-self:flex-end">Use disk capacity</button><button class="btn" id="cvt" style="align-self:flex-end">Use random T(I/O)</button></div><div id="cvo"></div></div></section>
 
 <section class="sec" id="s2"><div class="card"><h3>RAID simulation</h3>
 <div class="row"><label>Level<select id="lv"><option>0</option><option>1</option><option selected>5</option><option>4</option></select></label><label>Disks N<input id="N" type="number" value="5" min="2" max="12"></label><label>Per-disk capacity (GB)<input id="rc" type="number"></label><label>Block A to locate<input id="bA" type="number" value="14"></label></div>
 <div class="mu">Per-disk S (sequential) and R (random) come from the disk selected in the Calculator tab.</div>
-<div id="rl" style="margin:10px 0"></div><div class="res" id="rm"></div></div>
-<div class="card"><h3>Comparison table (N disks)</h3><div class="tw" id="rt"></div><div class="res" id="re"></div></div>
-<div class="card"><h3>Parity (XOR) demo</h3><div class="row"><label>Data blocks (0–255, comma separated)<input id="pd" value="12,200,77,145" style="min-width:220px"></label><label>Lost disk index<input id="pl" type="number" value="2" min="0"></label><label>New value for block 1 (small write)<input id="pn" type="number" value="99"></label></div><div class="res" id="pr"></div></div></section>
+<div id="rinfo"></div><div id="rl" style="margin:10px 0"></div><div id="rm"></div></div>
+<div class="card"><h3>Comparison table (N disks)</h3><div class="tw" id="rt"></div><div id="re"></div></div>
+<div class="card"><h3>Parity (XOR) demo</h3><div class="row"><label>Data blocks (0–255, comma separated)<input id="pd" value="12,200,77,145" style="min-width:220px"></label><label>Lost disk index<input id="pl" type="number" value="2" min="0"></label><label>New value for block 1 (small write)<input id="pn" type="number" value="99"></label></div><div id="pr"></div></div></section>
 
 <section class="sec" id="s3"><div class="card"><h3>Disk scheduling</h3>
 <div class="row"><label>Requests (tracks 0–99)<input id="qs" value="98,183,37,122,14,124,65,67" style="min-width:230px"></label><label>Head start<input id="hs" type="number" value="53"></label><label>Seek ms/track<input id="mt" type="number" value="0.1" step="0.01"></label><label>Policy<select id="pol"><option>FIFO</option><option>SSTF</option><option>SCAN</option><option>C-SCAN</option></select></label></div>
@@ -38,13 +42,14 @@
 <div class="card"><h3>Crash consistency: journaling</h3><div class="mu">Workload (chapter 42): append one 4 KB block to a file, which needs three writes: data block Db, bitmap B[v2] and inode I[v2]. Pick a mode and what reached the disk before the crash.</div>
 <div class="row" style="margin-top:8px"><label>Mode<select id="jm"><option value="n">No journal (fsck)</option><option value="d">Data journaling</option><option value="o">Ordered (metadata) journaling</option></select></label><label>Crash happens<select id="jc"></select></label></div><div class="res" id="jr"></div></div>
 <div class="card"><h3>LFS segment cleaner</h3><div class="mu">Four files a–d (4 blocks each) are written to the log, then overwritten blocks are appended to new segments (4 blocks per segment). ’ marks a rewritten version; struck-through blocks are dead.</div>
-<div class="row" style="margin-top:8px"><label>Overwrites (file+block, a–d, 0–3)<input id="lo" value="a1,c0,c2,b3,a3,d0,d1,b0" style="min-width:240px"></label><label>Segments to clean<input id="lk" type="number" value="2" min="1"></label></div><div id="lv"></div><div class="res" id="lr"></div></div>
+<div class="row" style="margin-top:8px"><label>Overwrites (file+block, a–d, 0–3)<input id="lo" value="a1,c0,c2,b3,a3,d0,d1,b0" style="min-width:240px"></label><label>Segments to clean<input id="lk" type="number" value="2" min="1"></label></div><div id="lfv"></div><div class="res" id="lr"></div></div>
 <div class="card"><h3>SSD: FTL &amp; garbage collection</h3><div class="mu">Log-structured page-mapped FTL. Writes append to the active block; overwrites leave dead pages; when free blocks run low, GC copies live pages out of the emptiest block and erases it. Cells: logical page number (green = live, struck = garbage, E = erased).</div>
 <div class="row" style="margin-top:8px"><label>Flash blocks<input id="fb" type="number" value="4" min="3" max="8"></label><label>Pages per block<input id="fp" type="number" value="4" min="2" max="8"></label><label>Read (µs)<input id="frd" type="number" value="25"></label><label>Program (µs)<input id="fpg" type="number" value="250"></label><label>Erase (µs)<input id="fe" type="number" value="1500"></label></div>
 <div class="row" style="margin-top:8px"><label>Host writes (logical pages)<input id="fw" value="100,101,2000,2001,100,101,100,101,100,101,2000,100,101,100,101,2001,100,101" style="min-width:320px"></label><button class="btn" id="fR" style="align-self:flex-end">Random skewed workload</button></div><div id="fv"></div><div class="res" id="ft"></div></div></section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/core.js"></script>
+<script src="js/units.js"></script>
 <script src="js/raid.js"></script>
 <script src="js/extras.js"></script>
 <script src="js/disk3d.js"></script>
