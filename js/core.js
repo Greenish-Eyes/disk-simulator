@@ -2,6 +2,9 @@
 
 const stepsHTML=l=>l.map((s,i)=>`<div class="st"><span class="n">${i+1}</span><div><div class="t">${s.t}</div><div class="fm">${s.f||""}</div><div class="vl">${s.v}</div></div></div>`).join("");
 const $=id=>document.getElementById(id),f=(n,d=3)=>(+(+n).toFixed(d)).toLocaleString();
+document.querySelectorAll('input[type="number"]').forEach(x=>{if(!x.hasAttribute("min"))x.min="0"});
+document.addEventListener("input",e=>{const x=e.target;if(x.matches('input[type="number"]')&&x.value!==""){const n=Number(x.value),min=x.min===""?0:Number(x.min),max=x.max===""?Infinity:Number(x.max);if(Number.isFinite(n)&&(n<min||n>max))x.value=String(Math.max(min,Math.min(max,n)))}});
+["qs","pd","cb","cb2","fw","lo"].forEach(id=>$(id).addEventListener("input",e=>{e.target.value=e.target.value.replace(/-\s*\d+(?:\.\d+)?/g,"0")}));
 const SEED=[["Seagate Cheetah 15K.5",15000,4,125,300,"SCSI"],["Seagate Barracuda (7.2K)",7200,9,105,1000,"SATA"],["OSTEP example disk",10000,7,50,100,"–"],["Typical 5400 RPM laptop",5400,12,80,500,"SATA"],["Typical 7200 RPM desktop",7200,8.5,150,2000,"SATA"],["Typical 10K enterprise",10000,4.5,150,600,"SAS"]].map(a=>({n:a[0],rpm:a[1],seek:a[2],rate:a[3],cap:a[4],i:a[5]}));
 let custom=[];try{custom=JSON.parse(localStorage.getItem("cdisks")||"[]")}catch(e){}
 const all=()=>SEED.concat(custom);
